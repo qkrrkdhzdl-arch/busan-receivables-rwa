@@ -1,0 +1,37 @@
+{
+  "case_id": "CASE-003",
+  "order": {
+    "buyer_biz_no": "345-67-89012",
+    "item": "냉동 참치(가다랑어) 10kg",
+    "qty": 400,
+    "unit_price": 62000,
+    "total": 24800000,
+    "order_date": "2026-09-15"
+  },
+  "shipment": {
+    "item": "냉동 참치(가다랑어) 10kg",
+    "qty": 400,
+    "lot": "GJ-20260916-03",
+    "ship_date": "2026-09-16"
+  },
+  "inspection": {
+    "item": "냉동 참치(가다랑어) 10kg",
+    "qty": 400,
+    "inspected_date": "2026-09-17",
+    "result": "합격"
+  },
+  "invoice": {
+    "buyer_biz_no": "345-67-89012",
+    "item": "냉동 참치(가다랑어) 10kg",
+    "qty": 400,
+    "unit_price": 62000,
+    "total": 24800000,
+    "issue_date": "2026-09-18",
+    "due_date": "2026-12-02"
+  },
+  "transfer_notice_sent": true,
+  "debtor_accepted": true,
+  "segregated_account_contract": true,
+  "related_party": false,
+  "consignment": false
+}

@@ -1,0 +1,37 @@
+{
+  "case_id": "CASE-001",
+  "order": {
+    "buyer_biz_no": "123-45-67890",
+    "item": "냉동 고등어(자숙) 20kg",
+    "qty": 500,
+    "unit_price": 80000,
+    "total": 40000000,
+    "order_date": "2026-09-01"
+  },
+  "shipment": {
+    "item": "냉동 고등어(자숙) 20kg",
+    "qty": 500,
+    "lot": "GJ-20260903-01",
+    "ship_date": "2026-09-03"
+  },
+  "inspection": {
+    "item": "냉동 고등어(자숙) 20kg",
+    "qty": 500,
+    "inspected_date": "2026-09-04",
+    "result": "합격"
+  },
+  "invoice": {
+    "buyer_biz_no": "123-45-67890",
+    "item": "냉동 고등어(자숙) 20kg",
+    "qty": 500,
+    "unit_price": 80000,
+    "total": 40000000,
+    "issue_date": "2026-09-05",
+    "due_date": "2026-11-04"
+  },
+  "transfer_notice_sent": true,
+  "debtor_accepted": true,
+  "segregated_account_contract": true,
+  "related_party": false,
+  "consignment": false
+}

@@ -1,0 +1,39 @@
+{
+  "case_id": "CASE-002",
+  "order": {
+    "buyer_biz_no": "234-56-78901",
+    "item": "냉동 오징어(원양) 15kg",
+    "qty": 300,
+    "unit_price": 95000,
+    "total": 28500000,
+    "order_date": "2026-09-08"
+  },
+  "shipment": {
+    "item": "냉동 오징어(원양) 15kg",
+    "qty": 300,
+    "lot": "GJ-20260910-07",
+    "ship_date": "2026-09-10"
+  },
+  "inspection": {
+    "item": "냉동 오징어(원양) 15kg",
+    "qty": 288,
+    "inspected_date": "2026-09-11",
+    "result": "합격(수량 감모)",
+    "qty_note": "해동 감모 12박스, 감모분 제외 발행 요청",
+    "qty_note_confirmed": false
+  },
+  "invoice": {
+    "buyer_biz_no": "234-56-78901",
+    "item": "냉동 오징어(원양) 15kg",
+    "qty": 300,
+    "unit_price": 95000,
+    "total": 28500000,
+    "issue_date": "2026-09-12",
+    "due_date": "2026-11-11"
+  },
+  "transfer_notice_sent": true,
+  "debtor_accepted": false,
+  "segregated_account_contract": true,
+  "related_party": false,
+  "consignment": false
+}
