@@ -86,6 +86,7 @@ body{{
   background:var(--bg); color:var(--fg);
   font:16px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
   -webkit-font-smoothing:antialiased;
+  word-break:keep-all;overflow-wrap:break-word;
 }}
 .wrap{{max-width:1080px;margin:0 auto;padding:0 20px 80px}}
 header.hero{{padding:56px 0 28px;border-bottom:1px solid var(--line)}}
