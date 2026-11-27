@@ -36,11 +36,22 @@ demo/
     case-002.json       # 검수 수량 불일치 + 채무자 승낙 미회수 (보류)
     case-003.json       # 정상 (확정)
     registry.json       # 발행 이력(이중 발행 차단용)
+site/
+  build_site.py         # 웹 데모 생성기 (파이썬 판정 결과를 그대로 페이지에 심음)
 docs/
+  index.html            # 웹 데모 — 설치 없이 클릭으로 확인 (증빙 대조 · 워터폴)
   제안서_박가온_부산블록체인해커톤2026.pdf   # 제안서 본문 3쪽 + 부록 1쪽
   요약.md
   데모_대본.md
 ```
+
+## 웹 데모
+
+설치 없이 클릭으로 확인: **https://qkrrkdhzdl-arch.github.io/busan-receivables-rwa/**
+
+- 표본 3건의 12항목 대조 판정과 채권 해시를 브라우저에서 계산합니다(Python 데모와 같은 규칙·같은 해시).
+- 유보금·만기·연체율을 움직이면 워터폴 분배와 투자자 손실 발생 지점이 바뀝니다.
+- 페이지는 `python3 site/build_site.py`로 `demo/samples/`에서 다시 생성됩니다.
 
 ## 실행
 
@@ -49,6 +60,9 @@ Python 3.10 이상, 표준 라이브러리만 사용합니다.
 ```bash
 python3 demo/evidence_match.py
 python3 demo/waterfall.py
+
+# 웹 데모(docs/index.html) 재생성 — 파이썬 판정 결과를 그대로 페이지에 심습니다
+python3 site/build_site.py
 ```
 
 출력 예시:

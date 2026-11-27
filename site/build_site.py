@@ -1,0 +1,427 @@
+#!/usr/bin/env python3
+"""제출용 웹 데모(docs/index.html)를 생성합니다.
+
+demo/evidence_match.py · demo/waterfall.py 와 **같은 규칙**을 브라우저 JS로 옮겨
+심사위원이 설치 없이 클릭으로 확인할 수 있게 합니다. 샘플 JSON과 파이썬 판정 결과를
+그대로 읽어 페이지에 심으므로, 파이썬 데모와 화면이 어긋나지 않습니다.
+
+사용: python3 site/build_site.py
+출력: docs/index.html
+"""
+
+from __future__ import annotations
+
+import html
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "demo"))
+
+from evidence_match import verify  # noqa: E402
+
+SAMPLES = ROOT / "demo" / "samples"
+
+
+def load() -> tuple[list[dict], dict]:
+    registry = json.loads((SAMPLES / "registry.json").read_text(encoding="utf-8"))
+    cases = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(SAMPLES.glob("case-*.json"))]
+    return cases, registry
+
+
+def won(n: int) -> str:
+    return f"{n:,}"
+
+
+def main() -> int:
+    cases, registry = load()
+    payload = {"cases": cases, "registry": registry}
+
+    verdicts = []
+    for case in cases:
+        v = verify(case, registry)
+        verdicts.append(
+            {
+                "case_id": v.case_id,
+                "status": v.status,
+                "digest": v.digest,
+                "checks": [{"item": c.item, "ok": c.ok, "detail": c.detail} for c in v.checks],
+            }
+        )
+
+    data_json = json.dumps(payload, ensure_ascii=False, indent=None, separators=(",", ":"))
+    expected_json = json.dumps({v["case_id"]: v["digest"] for v in verdicts}, ensure_ascii=False)
+
+    rows = []
+    for case, v in zip(cases, verdicts):
+        badge = "pass" if v["status"] == "PASS" else "hold"
+        rows.append(
+            f"""      <tr data-case="{html.escape(case['case_id'])}" tabindex="0" role="button" aria-label="{html.escape(case['case_id'])} 판정 상세 보기">
+        <td class="mono">{html.escape(case['case_id'])}</td>
+        <td>{html.escape(case['invoice']['item'])}</td>
+        <td class="num">{won(case['invoice']['total'])}원</td>
+        <td><span class="badge {badge}">{'확정' if badge == 'pass' else '보류'}</span></td>
+        <td class="mono dim">{v['digest'][:18]}…</td>
+      </tr>"""
+        )
+
+    counts_pass = sum(1 for v in verdicts if v["status"] == "PASS")
+
+    doc = f"""<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>검수 끝난 외상값을 토큰으로 — 부산 수산물 납품확정 채권 RWA</title>
+<meta name="description" content="부산 블록체인 해커톤 2026 TRACK 01 Busan RWA 출품작. 4종 증빙 대조로 확정한 수산물 외상매출채권을 솔라나 SPL 토큰으로 유동화하는 서비스의 클릭 데모.">
+<style>
+:root{{
+  --bg:#0b1220; --panel:#111a2b; --panel2:#16223a; --line:#24344f;
+  --fg:#e8eef9; --dim:#93a4bf; --accent:#4cc38a; --accent2:#5b9dff; --warn:#f2b544; --hold:#ff7a6b;
+}}
+*{{box-sizing:border-box}}
+html,body{{margin:0;padding:0}}
+body{{
+  background:var(--bg); color:var(--fg);
+  font:16px/1.65 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}}
+.wrap{{max-width:1080px;margin:0 auto;padding:0 20px 80px}}
+header.hero{{padding:56px 0 28px;border-bottom:1px solid var(--line)}}
+.tagline{{color:var(--accent);font-weight:700;letter-spacing:.02em;font-size:14px}}
+h1{{font-size:clamp(28px,4.2vw,44px);line-height:1.25;margin:10px 0 14px;letter-spacing:-.01em}}
+.lede{{color:var(--dim);max-width:760px;font-size:17px}}
+.chips{{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}}
+.chip{{border:1px solid var(--line);background:#0f1828;color:var(--dim);border-radius:999px;padding:6px 12px;font-size:13px}}
+.chip b{{color:var(--fg)}}
+section{{padding:44px 0;border-bottom:1px solid var(--line)}}
+h2{{font-size:clamp(20px,2.4vw,26px);margin:0 0 6px;letter-spacing:-.01em}}
+.sub{{color:var(--dim);margin:0 0 22px;font-size:15px}}
+.grid4{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}}
+@media(max-width:820px){{.grid4{{grid-template-columns:repeat(2,1fr)}}}}
+.step{{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}}
+.step .n{{color:var(--accent2);font-weight:700;font-size:13px;letter-spacing:.08em}}
+.step h3{{margin:6px 0 6px;font-size:16px}}
+.step p{{margin:0;color:var(--dim);font-size:13.5px;line-height:1.55}}
+.panel{{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}}
+table{{width:100%;border-collapse:collapse;font-size:14.5px}}
+th,td{{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line)}}
+th{{color:var(--dim);font-weight:600;font-size:12.5px;letter-spacing:.04em;text-transform:uppercase}}
+tbody tr[data-case]{{cursor:pointer}}
+tbody tr[data-case]:hover,tbody tr[data-case].on{{background:var(--panel2)}}
+.mono{{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}}
+.dim{{color:var(--dim)}}
+.num{{font-variant-numeric:tabular-nums}}
+.badge{{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12.5px;font-weight:700}}
+.badge.pass{{background:rgba(76,195,138,.14);color:var(--accent)}}
+.badge.hold{{background:rgba(255,122,107,.14);color:var(--hold)}}
+#detail{{margin-top:18px}}
+#detail h3{{margin:0 0 4px;font-size:16px}}
+.checklist{{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:1px;background:var(--line);border-radius:12px;overflow:hidden}}
+.checklist li{{display:grid;grid-template-columns:26px 180px 1fr;gap:10px;padding:10px 12px;background:var(--panel);font-size:13.5px;align-items:start}}
+@media(max-width:700px){{.checklist li{{grid-template-columns:22px 1fr;gap:6px}}.checklist .cd{{grid-column:1/-1;padding-left:32px}}}}
+.checklist .ci{{font-weight:700;text-align:center}}
+.ok .ci{{color:var(--accent)}} .no .ci{{color:var(--hold)}} .no{{background:#1d2030}}
+.checklist .cn{{font-weight:600}} .checklist .cd{{color:var(--dim)}}
+.controls{{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}}
+@media(max-width:760px){{.controls{{grid-template-columns:1fr 1fr}}}}
+label{{display:block;font-size:13px;color:var(--dim);margin-bottom:4px}}
+input[type=range]{{width:100%;accent-color:var(--accent)}}
+.val{{font-weight:700;color:var(--fg)}}
+.kpis{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0 8px}}
+@media(max-width:760px){{.kpis{{grid-template-columns:1fr 1fr}}}}
+.kpi{{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px}}
+.kpi .k{{font-size:12px;color:var(--dim)}} .kpi .v{{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}}
+.bar{{display:flex;height:38px;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin-top:8px}}
+.bar div{{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#08120c;white-space:nowrap;overflow:hidden}}
+.seg-cost{{background:#8fa4c7}} .seg-prin{{background:#5b9dff}} .seg-int{{background:#4cc38a}} .seg-sup{{background:#f2b544}}
+.legend{{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--dim);margin-top:8px}}
+.dot{{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}}
+ul.plain{{margin:0;padding-left:18px;color:var(--dim)}} ul.plain li{{margin:6px 0}}
+.links{{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}}
+a.btn{{display:inline-block;border:1px solid var(--line);background:var(--panel2);color:var(--fg);text-decoration:none;padding:10px 16px;border-radius:10px;font-size:14px}}
+a.btn:hover{{border-color:var(--accent2)}}
+footer{{padding:30px 0 0;color:var(--dim);font-size:13px}}
+.note{{border-left:3px solid var(--warn);padding:8px 0 8px 12px;color:var(--dim);font-size:13.5px;margin-top:16px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="tagline">부산 블록체인 해커톤 2026 · TRACK 01 Busan RWA</div>
+  <h1>검수 끝난 외상값을 토큰으로</h1>
+  <p class="lede">감천항·자갈치 냉동창고에서 <b>검수와 세금계산서까지 끝났지만 60~90일 뒤에 입금되는</b> 수산물 외상매출채권을,
+  신탁·SPV 이전과 솔라나 SPL 토큰 발행으로 유동화합니다. 재고나 어획물이 아니라 <b>만기와 채무자가 증빙으로 특정된 확정 채권</b>만 대상입니다.</p>
+  <div class="chips">
+    <span class="chip"><b>샘플 데이터</b> 3건 · 실제 유통사 데이터 아님</span>
+    <span class="chip">파이썬 데모와 <b>같은 판정 규칙</b> (체크 12항목)</span>
+    <span class="chip">금액·연체율은 <b>가정값</b></span>
+    <span class="chip">설치 없이 클릭으로 확인</span>
+  </div>
+</header>
+
+<section>
+  <h2>네 단계 — 확정 → 격리 → 발행 → 상환</h2>
+  <p class="sub">증빙이 없는 것이 문제가 아니라, 증빙을 금융이 읽을 수 있는 형태로 확정해 주는 장치가 없는 것이 문제입니다.</p>
+  <div class="grid4">
+    <div class="step"><div class="n">① 확정</div><h3>4종 증빙 대조</h3><p>주문서·출고 전표·검수 확인·세금계산서를 대조해 금액·만기·채무자·품목을 확정. 하나라도 어긋나면 발행 보류.</p></div>
+    <div class="step"><div class="n">② 격리</div><h3>신탁·SPV 이전</h3><p>채무자 양도 통지·승낙으로 민법 제450조 대항요건 확보. 수납은 분리계좌로만.</p></div>
+    <div class="step"><div class="n">③ 발행</div><h3>솔라나 SPL</h3><p>채권 해시·만기·유보율·워터폴을 온체인에 기록. 원본 문서·거래처 정보는 오프체인.</p></div>
+    <div class="step"><div class="n">④ 상환</div><h3>워터폴 분배</h3><p>만기 회수액을 비용 → 투자자 원금 → 이자 → 유통사 순서로 분배. 손실은 유보금이 먼저 흡수.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>데모 ① 증빙 4종 대조 — 확정 / 보류 판정</h2>
+  <p class="sub">아래 표의 행을 누르면 12개 체크 항목의 판정 근거가 열립니다. 파이썬 <span class="mono">demo/evidence_match.py</span>와 같은 규칙·같은 채권 해시를 계산합니다.</p>
+  <div class="panel">
+    <table>
+      <thead><tr><th>케이스</th><th>품목</th><th>세금계산서 금액</th><th>판정</th><th>채권 해시</th></tr></thead>
+      <tbody>
+{chr(10).join(rows)}
+      </tbody>
+    </table>
+    <div id="detail" aria-live="polite"></div>
+  </div>
+  <p class="note">확정 {counts_pass}건 / 보류 {len(cases) - counts_pass}건 (총 {len(cases)}건). 보류 사유는 수량 불일치(해동 감모 미확인)와 채무자 승낙 미회수 — 실제 발행에서는 이 두 건이 발행 전에 막힙니다.</p>
+</section>
+
+<section>
+  <h2>데모 ② 워터폴 — 연체가 유보금을 넘을 때만 투자자 손실</h2>
+  <p class="sub">채권 1억 원 · 만기 75일 · 유보금 10% · 투자자 연 5% · 비용 0.8%(발행액 기준)를 기본값으로 두고, 연체율을 움직여 보세요.</p>
+  <div class="panel">
+    <div class="controls">
+      <div><label for="face">채권 금액 (만 원) — <span class="val" id="face-v">10,000</span></label><input type="range" id="face" min="1000" max="50000" step="500" value="10000"></div>
+      <div><label for="term">만기 (일) — <span class="val" id="term-v">75</span></label><input type="range" id="term" min="60" max="90" step="1" value="75"></div>
+      <div><label for="reserve">유보금 (%) — <span class="val" id="reserve-v">10</span></label><input type="range" id="reserve" min="5" max="20" step="0.5" value="10"></div>
+      <div><label for="yield">투자자 수익률 (연 %) — <span class="val" id="yield-v">5</span></label><input type="range" id="yield" min="1" max="12" step="0.5" value="5"></div>
+      <div><label for="cost">발행·검증 비용 (발행액 %) — <span class="val" id="cost-v">0.8</span></label><input type="range" id="cost" min="0" max="3" step="0.1" value="0.8"></div>
+      <div><label for="delay">연체율 (%) — <span class="val" id="delay-v">0.5</span></label><input type="range" id="delay" min="0" max="15" step="0.5" value="0.5"></div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi"><div class="k">발행액</div><div class="v" id="k-issue">—</div></div>
+      <div class="kpi"><div class="k">유보금</div><div class="v" id="k-reserve">—</div></div>
+      <div class="kpi"><div class="k">유통사 총수령</div><div class="v" id="k-supplier">—</div></div>
+      <div class="kpi"><div class="k">투자자 손실률</div><div class="v" id="k-loss">—</div></div>
+    </div>
+
+    <div class="bar" id="bar" role="img" aria-label="워터폴 분배 막대"></div>
+    <div class="legend">
+      <span><span class="dot seg-cost"></span>비용 <b id="v-cost">—</b></span>
+      <span><span class="dot seg-prin"></span>투자자 원금 <b id="v-prin">—</b></span>
+      <span><span class="dot seg-int"></span>투자자 이자 <b id="v-int">—</b></span>
+      <span><span class="dot seg-sup"></span>유통사 정산 <b id="v-sup">—</b></span>
+    </div>
+    <p class="note" id="threshold">—</p>
+  </div>
+</section>
+
+<section>
+  <h2>토큰화하지 않는 것</h2>
+  <p class="sub">소유권·환가가치·회수 가능성을 담보할 수 없는 자산은 대상에서 뺍니다.</p>
+  <div class="chips">
+    <span class="chip">재고</span><span class="chip">어획물</span><span class="chip">위탁판매 물량</span>
+    <span class="chip">미확정 견적</span><span class="chip">90일 초과 채권</span><span class="chip">특수관계 거래</span>
+  </div>
+</section>
+
+<section>
+  <h2>정직하게 밝히는 것</h2>
+  <ul class="plain">
+    <li>이 페이지는 <b>샘플 JSON 3건</b>으로 동작하는 해커톤 데모입니다. 실제 유통사·창고 데이터가 아니며, 문서 OCR·AI 판독은 범위 밖(추출이 끝난 구조화 데이터의 검증 로직만)입니다.</li>
+    <li>유보금·조달비용·연체율은 <b>가정값</b>입니다. 표본 채권 상환 이력으로 검증하기 전에는 확정 수치가 아닙니다.</li>
+    <li>채권의 증권성, 발행 주체 적격성, 투자자 청약 요건은 <b>법률검토 전 확정할 수 없습니다.</b> 이 설계는 그 검토와 혁신금융서비스 규제샌드박스 신청을 전제로 합니다.</li>
+    <li>창고 2곳·유통사 5곳 참여는 협의 전 가정이며, 해커톤 기간에 참여 확인서로 대체합니다.</li>
+  </ul>
+  <div class="links">
+    <a class="btn" href="https://github.com/qkrrkdhzdl-arch/busan-receivables-rwa">GitHub 저장소</a>
+    <a class="btn" href="제안서_박가온_부산블록체인해커톤2026.pdf">제안서 (PDF)</a>
+    <a class="btn" href="요약.md">요약 (MD)</a>
+    <a class="btn" href="데모_대본.md">데모 대본 (MD)</a>
+  </div>
+</section>
+
+<footer>
+  박가온 — 부산대학교 정치외교학과 · 부산 블록체인 해커톤 2026 TRACK 01 Busan RWA 출품작<br>
+  판정·정산 로직은 저장소 <span class="mono">demo/evidence_match.py</span> · <span class="mono">demo/waterfall.py</span>와 동일합니다(표준 라이브러리만 사용).
+</footer>
+</div>
+
+<script>
+const CASES = {data_json};
+
+const REQUIRED = ["order","shipment","inspection","invoice"];
+const KWON = (n) => Number(n).toLocaleString("ko-KR");
+const trunc = (x) => Math.trunc(x);
+const dayDiff = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000);
+
+async function sha256Hex(text) {{
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return "0x" + Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}}
+
+function canonical(c) {{
+  const p = {{
+    buyer_biz_no: c.invoice.buyer_biz_no,
+    due_date: c.invoice.due_date,
+    issue_date: c.invoice.issue_date,
+    lot: (c.shipment && c.shipment.lot) || "",
+    total: c.invoice.total,
+  }};
+  const body = Object.keys(p).sort().map((k) => JSON.stringify(k) + ": " + JSON.stringify(p[k])).join(", ");
+  return "{{" + body + "}}";
+}}
+
+async function verify(c, registry) {{
+  const checks = [];
+  const add = (item, ok, detail) => checks.push({{item, ok: !!ok, detail}});
+  const missing = REQUIRED.filter((d) => !(d in c));
+  if (missing.length) {{
+    add("증빙 완비", false, "누락 문서: " + missing.join(", "));
+    return {{case_id: c.case_id, status: "HOLD", checks, digest: ""}};
+  }}
+  const o = c.order, s = c.shipment, i = c.inspection, v = c.invoice;
+
+  add("거래처 사업자번호", o.buyer_biz_no === v.buyer_biz_no, o.buyer_biz_no + " vs " + v.buyer_biz_no);
+  add("품목 일치", s.item === v.item, s.item + " vs " + v.item);
+
+  let qtyOk = i.qty === v.qty && s.qty === i.qty;
+  let qtyDetail = "검수 " + i.qty + " / 세금계산서 " + v.qty + " / 출고 " + s.qty;
+  if (!qtyOk && i.qty_note) {{
+    qtyDetail += " (사유: " + i.qty_note + ")";
+    qtyOk = !!i.qty_note_confirmed;
+  }}
+  add("수량 일치", qtyOk, qtyDetail);
+
+  const orderMath = o.qty * o.unit_price === o.total;
+  const invMath = v.qty * v.unit_price === v.total;
+  add("금액 계산", orderMath && invMath, "주문 " + KWON(o.total) + " / 세금계산서 " + KWON(v.total));
+
+  add("발행일 순서", dayDiff(i.inspected_date, v.issue_date) >= 0, "검수 " + i.inspected_date + " / 발행 " + v.issue_date);
+
+  const term = dayDiff(v.issue_date, v.due_date);
+  add("만기 60~90일", term >= 60 && term <= 90, term + "일");
+
+  const digest = await sha256Hex(canonical(c));
+  const issued = (registry.issued || []).includes(digest);
+  add("이중 발행", !issued, issued ? "동일 채권 해시 발행 이력 있음" : "발행 이력 없음");
+  add("양도 통지", c.transfer_notice_sent, "통지 발송 여부");
+  add("채무자 승낙", c.debtor_accepted, "승낙 회수 여부");
+  add("분리계좌 수납위임", c.segregated_account_contract, "계약 체결 여부");
+  add("특수관계 거래 아님", !c.related_party, "대표·임원 관계 조회");
+  add("위탁판매 아님", !c.consignment, "반품 조건부 거래 아님");
+
+  const status = checks.every((k) => k.ok) ? "PASS" : "HOLD";
+  return {{case_id: c.case_id, status, checks, digest}};
+}}
+
+// ---------- 데모 ① ----------
+async function show(caseId) {{
+  document.querySelectorAll("tr[data-case]").forEach((tr) => tr.classList.toggle("on", tr.dataset.case === caseId));
+  const c = CASES.cases.find((x) => x.case_id === caseId);
+  const r = await verify(c, CASES.registry);
+  const fails = r.checks.filter((k) => !k.ok).length;
+  const head = r.status === "PASS"
+    ? '<span class="badge pass">확정</span> 발행 가능 — 모든 체크 통과'
+    : '<span class="badge hold">보류</span> 발행 불가 — ' + fails + "개 항목 불일치";
+  const items = r.checks.map((k) => `
+    <li class="${{k.ok ? "ok" : "no"}}">
+      <span class="ci">${{k.ok ? "✓" : "✕"}}</span>
+      <span class="cn">${{k.item}}</span>
+      <span class="cd">${{k.detail}}${{k.ok ? "" : " — 이 항목이 해소되어야 발행됩니다"}}</span>
+    </li>`).join("");
+  document.getElementById("detail").innerHTML = `
+    <h3>${{c.case_id}} · ${{c.invoice.item}} · ${{KWON(c.invoice.total)}}원</h3>
+    <div class="sub" style="margin-bottom:0">${{head}}</div>
+    <div class="mono dim" style="margin-top:6px;word-break:break-all">채권 해시 ${{r.digest}}</div>
+    <ul class="checklist">${{items}}</ul>`;
+}}
+
+document.querySelectorAll("tr[data-case]").forEach((tr) => {{
+  tr.addEventListener("click", () => show(tr.dataset.case));
+  tr.addEventListener("keydown", (e) => {{ if (e.key === "Enter" || e.key === " ") {{ e.preventDefault(); show(tr.dataset.case); }} }});
+}});
+show(CASES.cases[0].case_id);
+
+// ---------- 데모 ② ----------
+const el = (id) => document.getElementById(id);
+
+function terms() {{
+  const face = Number(el("face").value) * 10000;
+  const term = Number(el("term").value);
+  const rr = Number(el("reserve").value) / 100;
+  const yr = Number(el("yield").value) / 100;
+  const cr = Number(el("cost").value) / 100;
+  const reserve = trunc(face * rr);
+  const issue = face - reserve;
+  return {{face, term, rr, yr, cr, reserve, issue, cost: trunc(issue * cr), interest: trunc(issue * yr * term / 365)}};
+}}
+
+function settle(t, d) {{
+  const collected = trunc(t.face * (1 - d));
+  const cost = Math.min(t.cost, collected);
+  const afterCost = collected - cost;
+  const principal = Math.min(t.issue, afterCost);
+  const afterPrin = afterCost - principal;
+  const interest = Math.min(t.interest, afterPrin);
+  const supplier = afterPrin - interest;
+  const shortfall = (t.issue + t.interest) - (principal + interest);
+  const loss = Math.max(0, shortfall);
+  return {{collected, cost, principal, interest, supplier, loss, lossRate: loss / t.issue, supplierTotal: t.issue + supplier}};
+}}
+
+function render() {{
+  const t = terms();
+  const d = Number(el("delay").value) / 100;
+  const r = settle(t, d);
+
+  el("face-v").textContent = KWON(el("face").value);
+  el("term-v").textContent = el("term").value;
+  el("reserve-v").textContent = el("reserve").value;
+  el("yield-v").textContent = el("yield").value;
+  el("cost-v").textContent = el("cost").value;
+  el("delay-v").textContent = el("delay").value;
+
+  el("k-issue").textContent = KWON(t.issue) + "원";
+  el("k-reserve").textContent = KWON(t.reserve) + "원";
+  el("k-supplier").textContent = KWON(r.supplierTotal) + "원";
+  el("k-loss").textContent = (r.lossRate * 100).toFixed(2) + "%";
+  el("k-loss").style.color = r.loss > 0 ? "var(--hold)" : "var(--accent)";
+
+  const total = r.cost + r.principal + r.interest + r.supplier || 1;
+  const seg = (cls, v) => v > 0 ? '<div class="' + cls + '" style="flex:' + v + '">' + (v / total > 0.06 ? KWON(v) : "") + "</div>" : "";
+  el("bar").innerHTML = seg("seg-cost", r.cost) + seg("seg-prin", r.principal) + seg("seg-int", r.interest) + seg("seg-sup", r.supplier);
+
+  el("v-cost").textContent = KWON(r.cost) + "원";
+  el("v-prin").textContent = KWON(r.principal) + "원";
+  el("v-int").textContent = KWON(r.interest) + "원";
+  el("v-sup").textContent = KWON(r.supplier) + "원";
+
+  const fee = (t.cost + t.interest) / t.issue;
+  const annual = fee * 365 / t.term * 100;
+  const buffer = t.reserve - t.cost - t.interest;
+  el("threshold").innerHTML = "이 조건의 유통사 실질 조달비용은 " + (fee * 100).toFixed(2) + "%(" + t.term + "일) → <b>연 " +
+    annual.toFixed(1) + "%</b>. 남은 유보금 버퍼 " + KWON(buffer) + "원(" + (buffer / t.face * 100).toFixed(1) +
+    "%)이 먼저 소진되고, 그 뒤에야 투자자 원금·이자에서 손실이 배분됩니다." +
+    (r.loss > 0 ? ' <span style="color:var(--hold)">지금은 연체율이 버퍼를 넘어 투자자 손실 ' + KWON(r.loss) + "원이 발생하는 구간입니다.</span>" : "");
+}}
+
+["face","term","reserve","yield","cost","delay"].forEach((id) => el(id).addEventListener("input", render));
+render();
+</script>
+</body>
+</html>
+"""
+
+    out = ROOT / "docs" / "index.html"
+    out.write_text(doc, encoding="utf-8")
+    print(f"wrote {out} ({len(doc):,} bytes)")
+    print("expected digests:", expected_json)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
